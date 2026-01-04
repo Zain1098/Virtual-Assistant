@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: shifra-frontend
-    env: static
-    buildCommand: cd client && npm install && npm run build
-    staticPublishPath: ./client/build
-    envVars:
-      - key: REACT_APP_API_URL
-        value: https://shifra-backend.onrender.com
