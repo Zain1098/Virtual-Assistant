@@ -200,15 +200,30 @@ const App: React.FC = () => {
     
     // Smart AI Response System
     const processSmartCommand = (cmd: string) => {
-      // Greeting detection
-      if (/\b(hi|hello|hey|namaste|salam|assalam)\b/i.test(cmd)) {
+      // Enhanced greeting detection with Roman Urdu
+      if (/\b(hi|hello|hey|namaste|salam|assalam|kaise ho|kaisa hai|kya haal|sup|wassup)\b/i.test(cmd)) {
         const responses = [
-          'Hello! Main Shifra hun, aapka AI assistant. Kya madad kar sakti hun?',
-          'Hi! Kaise hain aap? Koi command dena chahte hain?',
-          'Namaste! Main yahan hun aapki help ke liye.'
+          'Hello! Main Shifra hun, aapka AI assistant.',
+          'Hi! Main theek hun, aap kaise hain?',
+          'Namaste! Kya madad kar sakti hun?',
+          'Hey! Sab theek? Koi kaam hai?'
         ];
         const response = responses[Math.floor(Math.random() * responses.length)];
         addMessage(response, 'assistant', 'greeting');
+        speak(response);
+        return true;
+      }
+      
+      // Casual conversation responses
+      if (/\b(chal be|chalo|theek hai|ok|okay|accha|sahi|good|nice|cool)\b/i.test(cmd)) {
+        const responses = [
+          'Haan bolo, kya karna hai?',
+          'Theek hai, koi command do.',
+          'Accha, ab kya kaam hai?',
+          'Cool! Kuch aur chahiye?'
+        ];
+        const response = responses[Math.floor(Math.random() * responses.length)];
+        addMessage(response, 'assistant', 'info');
         speak(response);
         return true;
       }
@@ -665,7 +680,16 @@ const App: React.FC = () => {
         utterance.rate = voiceSettings.rate;
         utterance.pitch = voiceSettings.pitch;
         utterance.volume = voiceSettings.volume;
-        utterance.lang = 'en-US';
+        
+        // Smart language detection for better pronunciation
+        if (/[a-zA-Z]/.test(text) && !/[\u0600-\u06FF]/.test(text)) {
+          // Contains English characters, use English voice
+          utterance.lang = 'en-US';
+        } else {
+          // Use Hindi voice for Roman Urdu/Hindi words
+          utterance.lang = 'hi-IN';
+        }
+        
         speechSynthesis.speak(utterance);
       } else {
         console.log('Speech synthesis not supported');
