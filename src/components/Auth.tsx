@@ -30,30 +30,19 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         return;
       }
 
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      const response = await fetch(`http://localhost:8000${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem('shifra_token', data.token);
-        localStorage.setItem('shifra_user', JSON.stringify(data.user));
-        onLogin(data.user);
-      } else {
-        setError(data.message || 'Authentication failed');
-      }
+      // Simulate successful authentication for demo
+      const userData = {
+        id: Date.now(),
+        name: formData.name || 'Demo User',
+        email: formData.email
+      };
+      
+      localStorage.setItem('shifra_token', 'demo_token_' + Date.now());
+      localStorage.setItem('shifra_user', JSON.stringify(userData));
+      onLogin(userData);
+      
     } catch (error) {
-      setError('Network error. Please try again.');
+      setError('Authentication failed. Please try again.');
     }
 
     setLoading(false);

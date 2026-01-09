@@ -89,15 +89,24 @@ const App: React.FC = () => {
     const userId = getUserId();
     const savedTasks = localStorage.getItem(`shifra_tasks_${userId}`);
     const savedActivities = localStorage.getItem(`shifra_activities_${userId}`);
+    const savedMessages = localStorage.getItem(`shifra_messages_${userId}`);
+    const savedTheme = localStorage.getItem('shifra_theme');
+    const savedVoiceSettings = localStorage.getItem('shifra_voice_settings');
     
     if (savedTasks) setTasks(JSON.parse(savedTasks));
     if (savedActivities) setActivities(JSON.parse(savedActivities));
+    if (savedMessages) setMessages(JSON.parse(savedMessages));
+    if (savedTheme) setTheme(savedTheme as 'dark' | 'light');
+    if (savedVoiceSettings) setVoiceSettings(JSON.parse(savedVoiceSettings));
     
     addActivity('Connected to local assistant', 'connection');
     
-    setTimeout(() => {
-      addMessage('Hello! I am Shifra, your AI assistant. Try saying "time kya hai" or "open youtube".', 'assistant', 'greeting');
-    }, 1000);
+    // Only add welcome message if no previous messages
+    if (!savedMessages) {
+      setTimeout(() => {
+        addMessage('Hello! I am Shifra, your AI assistant. Try saying "time kya hai" or "open youtube".', 'assistant', 'greeting');
+      }, 1000);
+    }
 
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
@@ -125,6 +134,30 @@ const App: React.FC = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Save data to localStorage whenever it changes
+  useEffect(() => {
+    const userId = getUserId();
+    localStorage.setItem(`shifra_tasks_${userId}`, JSON.stringify(tasks));
+  }, [tasks]);
+
+  useEffect(() => {
+    const userId = getUserId();
+    localStorage.setItem(`shifra_activities_${userId}`, JSON.stringify(activities));
+  }, [activities]);
+
+  useEffect(() => {
+    const userId = getUserId();
+    localStorage.setItem(`shifra_messages_${userId}`, JSON.stringify(messages));
+  }, [messages]);
+
+  useEffect(() => {
+    localStorage.setItem('shifra_theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('shifra_voice_settings', JSON.stringify(voiceSettings));
+  }, [voiceSettings]);
 
   const addMessage = (text: string, sender: 'user' | 'assistant', type: string = 'text') => {
     const newMessage: Message = {
