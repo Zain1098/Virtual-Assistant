@@ -148,9 +148,14 @@ const App: React.FC = () => {
         'Hi! Main theek hun, aap kaise hain?',
         'Namaste! Kya madad kar sakti hun?'
       ];
-      const response = responses[Math.floor(Math.random() * responses.length)];
-      addMessage(response, 'assistant', 'greeting');
-      speak(response);
+      const voiceResponses = [
+        'Hello! I am Shifra, your AI assistant.',
+        'Hi! I am fine, how are you?',
+        'Hello! How can I help you?'
+      ];
+      const index = Math.floor(Math.random() * responses.length);
+      addMessage(responses[index], 'assistant', 'greeting');
+      speak(voiceResponses[index]);
       return true;
     }
     
@@ -159,13 +164,13 @@ const App: React.FC = () => {
       if (/\b(time|waqt|baje|kitna)\b/i.test(cmd)) {
         const time = new Date().toLocaleTimeString('en-US', { hour12: true });
         addMessage(`Current time: ${time}`, 'assistant', 'info');
-        speak(`Abhi time hai ${time}`);
+        speak(`Current time is ${time}`);
         return true;
       }
       if (/\b(date|tarikh|aaj|today|din|day|konsa)\b/i.test(cmd)) {
         const date = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         addMessage(`Today is ${date}`, 'assistant', 'info');
-        speak(`Aaj ki date hai ${date}`);
+        speak(`Today is ${date}`);
         return true;
       }
     }
@@ -187,7 +192,7 @@ const App: React.FC = () => {
       const siteName = site.charAt(0).toUpperCase() + site.slice(1);
       
       addMessage(`${siteName} khol raha hun`, 'assistant', 'info');
-      speak(`${siteName} khol raha hun`);
+      speak(`Opening ${siteName}`);
       window.open(url, '_blank');
       return true;
     }
@@ -198,7 +203,7 @@ const App: React.FC = () => {
       const query = searchMatch[1];
       const searchUrl = `https://google.com/search?q=${encodeURIComponent(query)}`;
       addMessage(`"${query}" search kar raha hun`, 'assistant', 'info');
-      speak(`${query} search kar raha hun`);
+      speak(`Searching for ${query}`);
       window.open(searchUrl, '_blank');
       return true;
     }
@@ -215,7 +220,7 @@ const App: React.FC = () => {
         };
         setTasks(prev => [...prev, newTask]);
         addMessage(`Task ban gaya: "${taskText}"`, 'assistant', 'info');
-        speak(`Task ban gaya: ${taskText}`);
+        speak(`Task created: ${taskText}`);
         return true;
       }
     }
@@ -234,12 +239,12 @@ const App: React.FC = () => {
         if (expression && /[0-9]/.test(expression)) {
           const result = eval(expression);
           addMessage(`Jawab: ${result}`, 'assistant', 'info');
-          speak(`Jawab hai ${result}`);
+          speak(`The answer is ${result}`);
           return true;
         }
       } catch (error) {
         addMessage('Calculation samjh nahi aaya', 'assistant', 'info');
-        speak('Calculation samjh nahi aaya');
+        speak('Could not understand the calculation');
         return true;
       }
     }
@@ -249,13 +254,13 @@ const App: React.FC = () => {
       if (/\b(dark|andhera)\b/i.test(cmd)) {
         setTheme('dark');
         addMessage('Dark mode on kar diya', 'assistant', 'info');
-        speak('Dark mode on kar diya');
+        speak('Dark mode activated');
         return true;
       }
       if (/\b(light|ujala)\b/i.test(cmd)) {
         setTheme('light');
         addMessage('Light mode on kar diya', 'assistant', 'info');
-        speak('Light mode on kar diya');
+        speak('Light mode activated');
         return true;
       }
     }
@@ -263,19 +268,19 @@ const App: React.FC = () => {
     // General conversation
     if (/\b(thanks|thank you|shukriya|dhanyawad)\b/i.test(cmd)) {
       addMessage('Welcome! Koi aur madad chahiye?', 'assistant', 'info');
-      speak('Welcome! Koi aur madad chahiye?');
+      speak('You are welcome! Do you need any other help?');
       return true;
     }
     
     if (/\b(bye|goodbye|alvida|khuda hafiz)\b/i.test(cmd)) {
       addMessage('Goodbye! Phir milenge!', 'assistant', 'info');
-      speak('Goodbye! Phir milenge!');
+      speak('Goodbye! See you later!');
       return true;
     }
     
     // Default smart response
     addMessage(`Main "${command}" samjh gaya. Kya aap chahte hain ke main Google pe search karun?`, 'assistant', 'info');
-    speak('Samjh gaya, Google pe search karta hun');
+    speak('I understand. Let me search that on Google for you');
     setTimeout(() => {
       window.open(`https://google.com/search?q=${encodeURIComponent(command)}`, '_blank');
     }, 1000);
@@ -324,44 +329,7 @@ const App: React.FC = () => {
         utterance.rate = voiceSettings.rate;
         utterance.pitch = voiceSettings.pitch;
         utterance.volume = voiceSettings.volume;
-        
-        // Smart language detection and pronunciation fixes
-        let processedText = text;
-        
-        // Replace Roman Urdu with phonetic English for better pronunciation
-        const romanUrduMap: {[key: string]: string} = {
-          'kaise ho': 'kaay-say ho',
-          'theek hun': 'theek hun',
-          'samjh gaya': 'samaj gaya',
-          'kar raha hun': 'kar raha hun',
-          'khol raha hun': 'khol raha hun',
-          'search kar raha hun': 'search kar raha hun',
-          'ban gaya': 'ban gaya',
-          'jawab hai': 'jawab hai',
-          'abhi time hai': 'abhi time hai',
-          'aaj ki date hai': 'aaj ki date hai',
-          'madad chahiye': 'madad chahiye',
-          'phir milenge': 'phir milenge',
-          'dark mode on kar diya': 'dark mode on kar diya',
-          'light mode on kar diya': 'light mode on kar diya'
-        };
-        
-        // Replace Roman Urdu phrases with phonetic versions
-        Object.keys(romanUrduMap).forEach(urdu => {
-          const phonetic = romanUrduMap[urdu];
-          processedText = processedText.replace(new RegExp(urdu, 'gi'), phonetic);
-        });
-        
-        // Set language based on content
-        if (/[a-zA-Z]/.test(processedText) && processedText.includes(' ')) {
-          // Mixed or English content
-          utterance.lang = 'en-US';
-        } else {
-          // Pure Roman Urdu - use Hindi voice
-          utterance.lang = 'hi-IN';
-        }
-        
-        utterance.text = processedText;
+        utterance.lang = 'en-US'; // Always use English voice
         speechSynthesis.speak(utterance);
       }
     } catch (error) {
