@@ -15,7 +15,7 @@ interface Message {
 }
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // Start as guest
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -41,7 +41,6 @@ const App: React.FC = () => {
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Generate or get user ID
   const getUserId = () => {
     let userId = localStorage.getItem('shifra_user_id');
     if (!userId) {
@@ -69,7 +68,6 @@ const App: React.FC = () => {
     setShowAuthModal(true);
   };
 
-  // Add activity function
   const addActivity = (action: string, type: 'command' | 'setting' | 'connection' | 'task') => {
     const newActivity = {
       id: Date.now(),
@@ -77,11 +75,10 @@ const App: React.FC = () => {
       time: new Date(),
       type
     };
-    setActivities(prev => [newActivity, ...prev.slice(0, 9)]); // Keep only last 10 activities
+    setActivities(prev => [newActivity, ...prev.slice(0, 9)]);
   };
 
   useEffect(() => {
-    // Check if user is already logged in
     const token = localStorage.getItem('shifra_token');
     const savedUser = localStorage.getItem('shifra_user');
     
@@ -89,7 +86,6 @@ const App: React.FC = () => {
       setUser(JSON.parse(savedUser));
     }
     
-    // Load saved data
     const userId = getUserId();
     const savedTasks = localStorage.getItem(`shifra_tasks_${userId}`);
     const savedActivities = localStorage.getItem(`shifra_activities_${userId}`);
@@ -97,15 +93,12 @@ const App: React.FC = () => {
     if (savedTasks) setTasks(JSON.parse(savedTasks));
     if (savedActivities) setActivities(JSON.parse(savedActivities));
     
-    // Simulate connection
     addActivity('Connected to local assistant', 'connection');
     
-    // Add welcome message
     setTimeout(() => {
-      addMessage('Hello! I am Shifra, your AI assistant. Try saying "time kya hai" or "dark mode karo".', 'assistant', 'greeting');
+      addMessage('Hello! I am Shifra, your AI assistant. Try saying "time kya hai" or "open youtube".', 'assistant', 'greeting');
     }, 1000);
 
-    // Initialize Speech Recognition with multi-language support
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
@@ -117,20 +110,6 @@ const App: React.FC = () => {
         const transcript = event.results[0][0].transcript;
         handleVoiceCommand(transcript);
         setIsListening(false);
-        
-        if (isBackgroundListening) {
-          setTimeout(() => {
-            if (recognitionRef.current && !isListening) {
-              try {
-                recognitionRef.current.start();
-                setIsListening(true);
-              } catch (error) {
-                console.log('Voice recognition restart failed:', error);
-                setIsListening(false);
-              }
-            }
-          }, 1000);
-        }
       };
 
       recognitionRef.current.onerror = (event: any) => {
@@ -138,48 +117,14 @@ const App: React.FC = () => {
         setIsListening(false);
       };
       recognitionRef.current.onend = () => setIsListening(false);
-    } else {
-      console.log('Speech recognition not supported in this browser');
     }
 
-    return () => {
-      // Cleanup
-    };
+    return () => {};
   }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  // Global hotkey listener
-  useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.shiftKey && event.key === 'V') {
-        event.preventDefault();
-        if (!isListening) {
-          startListening();
-          window.focus();
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyPress);
-    return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [isListening]);
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (!target.closest('.dropdown-container') && !target.closest('.modal-content') && !target.closest('.side-panel')) {
-        setShowSettingsDropdown(false);
-        setShowUserDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const addMessage = (text: string, sender: 'user' | 'assistant', type: string = 'text') => {
     const newMessage: Message = {
@@ -192,455 +137,156 @@ const App: React.FC = () => {
     setMessages(prev => [...prev, newMessage]);
   };
 
-  const handleVoiceCommand = (command: string, isVoice: boolean = true) => {
-    addMessage(command, 'user', 'command');
-    addActivity(`${isVoice ? 'Voice' : 'Text'} command: "${command}"`, 'command');
+  // Smart AI Processing
+  const processSmartCommand = async (command: string) => {
+    const cmd = command.toLowerCase();
     
-    const lowerCommand = command.toLowerCase();
-    
-    // Smart AI Response System
-    const processSmartCommand = (cmd: string) => {
-      // Enhanced greeting detection with Roman Urdu
-      if (/\b(hi|hello|hey|namaste|salam|assalam|kaise ho|kaisa hai|kya haal|sup|wassup)\b/i.test(cmd)) {
-        const responses = [
-          'Hello! Main Shifra hun, aapka AI assistant.',
-          'Hi! Main theek hun, aap kaise hain?',
-          'Namaste! Kya madad kar sakti hun?',
-          'Hey! Sab theek? Koi kaam hai?'
-        ];
-        const response = responses[Math.floor(Math.random() * responses.length)];
-        addMessage(response, 'assistant', 'greeting');
-        speak(response);
-        return true;
-      }
-      
-      // Casual conversation responses
-      if (/\b(chal be|chalo|theek hai|ok|okay|accha|sahi|good|nice|cool)\b/i.test(cmd)) {
-        const responses = [
-          'Haan bolo, kya karna hai?',
-          'Theek hai, koi command do.',
-          'Accha, ab kya kaam hai?',
-          'Cool! Kuch aur chahiye?'
-        ];
-        const response = responses[Math.floor(Math.random() * responses.length)];
-        addMessage(response, 'assistant', 'info');
-        speak(response);
-        return true;
-      }
-      
-      // Website opening - Smart detection
-      const websiteMatch = cmd.match(/(?:open|kholo|visit|go to)\s+([a-zA-Z0-9]+)/i);
-      if (websiteMatch) {
-        const site = websiteMatch[1].toLowerCase();
-        let url = '';
-        let siteName = '';
-        
-        // Smart URL mapping
-        const siteMap: {[key: string]: {url: string, name: string}} = {
-          'youtube': {url: 'https://youtube.com', name: 'YouTube'},
-          'google': {url: 'https://google.com', name: 'Google'},
-          'facebook': {url: 'https://facebook.com', name: 'Facebook'},
-          'instagram': {url: 'https://instagram.com', name: 'Instagram'},
-          'insta': {url: 'https://instagram.com', name: 'Instagram'},
-          'twitter': {url: 'https://twitter.com', name: 'Twitter'},
-          'github': {url: 'https://github.com', name: 'GitHub'},
-          'linkedin': {url: 'https://linkedin.com', name: 'LinkedIn'},
-          'whatsapp': {url: 'https://web.whatsapp.com', name: 'WhatsApp Web'},
-          'gmail': {url: 'https://gmail.com', name: 'Gmail'},
-          'amazon': {url: 'https://amazon.com', name: 'Amazon'},
-          'netflix': {url: 'https://netflix.com', name: 'Netflix'}
-        };
-        
-        if (siteMap[site]) {
-          url = siteMap[site].url;
-          siteName = siteMap[site].name;
-        } else {
-          // Smart fallback - try common patterns
-          url = `https://${site}.com`;
-          siteName = site.charAt(0).toUpperCase() + site.slice(1);
-        }
-        
-        addMessage(`${siteName} khol raha hun`, 'assistant', 'info');
-        speak(`${siteName} khol raha hun`);
-        window.open(url, '_blank');
-        return true;
-      }
-      
-      // Search queries
-      const searchMatch = cmd.match(/(?:search|find|look for|dhundo)\s+(.+)/i);
-      if (searchMatch) {
-        const query = searchMatch[1];
-        const searchUrl = `https://google.com/search?q=${encodeURIComponent(query)}`;
-        addMessage(`"${query}" search kar raha hun`, 'assistant', 'info');
-        speak(`${query} search kar raha hun`);
-        window.open(searchUrl, '_blank');
-        return true;
-      }
-      
-      // Smart task creation - any format
-      if (/(?:task|kaam|todo|reminder|yaad|remember)/i.test(cmd)) {
-        const taskText = cmd.replace(/(?:create|add|make|banao|karo|task|kaam|todo|reminder|yaad|remember|me|mujhe|hai|karna|krna)/gi, '').trim();
-        if (taskText) {
-          const newTask = {
-            id: Date.now(),
-            title: taskText,
-            completed: false,
-            priority: 'medium' as 'low' | 'medium' | 'high'
-          };
-          setTasks(prev => [...prev, newTask]);
-          addMessage(`Task created: "${taskText}"`, 'assistant', 'info');
-          speak(`Task ban gaya: ${taskText}`);
-          return true;
-        }
-      }
-      
-      // Smart calculation
-      const mathMatch = cmd.match(/(?:calculate|compute|solve|hisab|plus|minus|multiply|divide|\+|\-|\*|\/|\d)/i);
-      if (mathMatch) {
-        try {
-          // Extract numbers and operators
-          const expression = cmd.replace(/[^0-9+\-*/.() ]/g, ' ').replace(/\s+/g, '').replace(/plus/gi, '+').replace(/minus/gi, '-').replace(/multiply/gi, '*').replace(/divide/gi, '/');
-          if (expression && /[0-9]/.test(expression)) {
-            const result = eval(expression);
-            addMessage(`${cmd} = ${result}`, 'assistant', 'info');
-            speak(`Jawab hai ${result}`);
-            return true;
-          }
-        } catch (error) {
-          addMessage('Calculation samjh nahi aaya', 'assistant', 'info');
-          speak('Calculation samjh nahi aaya');
-          return true;
-        }
-      }
-      
-      return false;
-    };
-    
-    // Try smart processing first
-    if (processSmartCommand(lowerCommand)) {
-      return;
+    // Greetings
+    if (/\b(hi|hello|hey|namaste|salam|kaise ho|kaisa hai|kya haal)\b/i.test(cmd)) {
+      const responses = [
+        'Hello! Main Shifra hun, aapka AI assistant.',
+        'Hi! Main theek hun, aap kaise hain?',
+        'Namaste! Kya madad kar sakti hun?'
+      ];
+      const response = responses[Math.floor(Math.random() * responses.length)];
+      addMessage(response, 'assistant', 'greeting');
+      speak(response);
+      return true;
     }
     
-    // Urdu Task Creation Commands
-    const urduTaskMatch = lowerCommand.match(/(?:task banao|kaam banao|task add karo|kaam add karo|ek task create karo|task create karo)\s+(.+?)(?:\s+(?:high|medium|low|zaroori|aam|kam)\s+priority)?$/i) ||
-                         lowerCommand.match(/(.+?)\s+(?:ka|ke)\s+(?:task|kaam)\s+banao/i) ||
-                         lowerCommand.match(/mujhe\s+(.+?)\s+(?:karna|krna)\s+hai/i) ||
-                         lowerCommand.match(/(.+?)\s+(?:hai|karni hai|karna hai|krna hai)$/i);
-    
-    // English Task Creation Commands  
-    const taskMatch = lowerCommand.match(/(?:create|add|make)\s+(?:a\s+)?task\s+(.+?)(?:\s+(?:with|as)\s+(high|medium|low)\s+priority)?$/i);
-    
-    if (urduTaskMatch || taskMatch) {
-      let taskTitle, priority;
-      
-      if (urduTaskMatch) {
-        taskTitle = urduTaskMatch[1].trim();
-        priority = 'medium';
-        if (lowerCommand.includes('zaroori') || lowerCommand.includes('important')) priority = 'high';
-        if (lowerCommand.includes('kam') || lowerCommand.includes('low')) priority = 'low';
-      } else if (taskMatch) {
-        taskTitle = taskMatch[1].trim();
-        priority = (taskMatch[2] || 'medium').toLowerCase() as 'low' | 'medium' | 'high';
+    // Time/Date queries
+    if (/\b(time|date|day|din|waqt|tarikh|aaj|today|current|kya|konsa|kitna|baje)\b/i.test(cmd)) {
+      if (/\b(time|waqt|baje|kitna)\b/i.test(cmd)) {
+        const time = new Date().toLocaleTimeString('en-US', { hour12: true });
+        addMessage(`Current time: ${time}`, 'assistant', 'info');
+        speak(`Abhi time hai ${time}`);
+        return true;
       }
-      
-      const newTask = {
-        id: Date.now(),
-        title: taskTitle,
-        completed: false,
-        priority: priority as 'low' | 'medium' | 'high'
+      if (/\b(date|tarikh|aaj|today|din|day|konsa)\b/i.test(cmd)) {
+        const date = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        addMessage(`Today is ${date}`, 'assistant', 'info');
+        speak(`Aaj ki date hai ${date}`);
+        return true;
+      }
+    }
+    
+    // Website opening
+    const websiteMatch = cmd.match(/(?:open|kholo|visit|chalo)\s+([a-zA-Z0-9]+)/i);
+    if (websiteMatch) {
+      const site = websiteMatch[1].toLowerCase();
+      const siteMap: {[key: string]: string} = {
+        'youtube': 'https://youtube.com',
+        'google': 'https://google.com',
+        'facebook': 'https://facebook.com',
+        'instagram': 'https://instagram.com',
+        'twitter': 'https://twitter.com',
+        'github': 'https://github.com'
       };
       
-      setTasks(prev => [...prev, newTask]);
-      addMessage(`Task created: "${taskTitle}" with ${priority} priority`, 'assistant', 'info');
-      addActivity(`Created task: "${taskTitle}"`, 'task');
-      speak(`Task ban gaya: ${taskTitle}`);
-      return;
+      const url = siteMap[site] || `https://${site}.com`;
+      const siteName = site.charAt(0).toUpperCase() + site.slice(1);
+      
+      addMessage(`${siteName} khol raha hun`, 'assistant', 'info');
+      speak(`${siteName} khol raha hun`);
+      window.open(url, '_blank');
+      return true;
     }
     
-    // Urdu Task Completion Commands
-    const urduCompleteMatch = lowerCommand.match(/(?:task complete karo|kaam complete karo|task khatam karo|kaam khatam karo)\s+(.+)/i) ||
-                             lowerCommand.match(/(.+?)\s+(?:complete|khatam|done)\s+(?:karo|kar do)/i) ||
-                             lowerCommand.match(/(.+?)\s+(?:ho gaya|hogaya)/i);
+    // Search queries
+    const searchMatch = cmd.match(/(?:search|find|dhundo|batao)\s+(.+)/i);
+    if (searchMatch) {
+      const query = searchMatch[1];
+      const searchUrl = `https://google.com/search?q=${encodeURIComponent(query)}`;
+      addMessage(`"${query}" search kar raha hun`, 'assistant', 'info');
+      speak(`${query} search kar raha hun`);
+      window.open(searchUrl, '_blank');
+      return true;
+    }
     
-    // English Task Completion Commands
-    const completeMatch = lowerCommand.match(/(?:complete|finish|done)\s+task\s+(.+)/i);
-    
-    if (urduCompleteMatch || completeMatch) {
-      const taskTitle = (urduCompleteMatch?.[1] || completeMatch?.[1])?.trim().toLowerCase();
-      const task = tasks.find(t => t.title.toLowerCase().includes(taskTitle));
-      if (task) {
-        toggleTask(task.id);
-        addMessage(`Task "${task.title}" marked as completed`, 'assistant', 'info');
-        addActivity(`Completed task: "${task.title}"`, 'task');
-        speak(`${task.title} complete ho gaya`);
-        return;
-      } else {
-        addMessage('Task nahi mila', 'assistant', 'info');
-        speak('Task nahi mila');
-        return;
+    // Task creation
+    if (/\b(task|kaam|todo|reminder|yaad)\b/i.test(cmd)) {
+      const taskText = cmd.replace(/(?:task|kaam|todo|reminder|yaad|banao|karo|create|add|make)\s*/gi, '').trim();
+      if (taskText) {
+        const newTask = {
+          id: Date.now(),
+          title: taskText,
+          completed: false,
+          priority: 'medium' as 'low' | 'medium' | 'high'
+        };
+        setTasks(prev => [...prev, newTask]);
+        addMessage(`Task ban gaya: "${taskText}"`, 'assistant', 'info');
+        speak(`Task ban gaya: ${taskText}`);
+        return true;
       }
     }
     
-    // Urdu Show Tasks Commands
-    if (lowerCommand.includes('mere tasks') || lowerCommand.includes('mere kaam') || 
-        lowerCommand.includes('tasks dikhao') || lowerCommand.includes('kaam dikhao') ||
-        lowerCommand.includes('show tasks') || lowerCommand.includes('my tasks')) {
-      setShowTasksPanel(true);
-      addMessage('Aapke tasks khol rahe hain', 'assistant', 'info');
-      speak('Aapke tasks khol rahe hain');
-      return;
-    }
-    
-    // Browser Control Commands (Urdu & English)
-    if (lowerCommand.includes('chrome') && (lowerCommand.includes('close') || lowerCommand.includes('band'))) {
-      addMessage('Chrome browser close karne ki koshish kar raha hun', 'assistant', 'info');
-      speak('Chrome browser close kar raha hun');
-      // Note: Browser cannot actually close other applications due to security restrictions
-      return;
-    }
-    
-    if (lowerCommand.includes('browser') && (lowerCommand.includes('close') || lowerCommand.includes('band'))) {
-      addMessage('Browser close karne ki koshish kar raha hun', 'assistant', 'info');
-      speak('Browser close kar raha hun');
-      // This will close the current tab/window
-      setTimeout(() => window.close(), 1000);
-      return;
-    }
-    
-    // New Tab Commands
-    if (lowerCommand.includes('new tab') || lowerCommand.includes('naya tab') || lowerCommand.includes('nayi tab')) {
-      addMessage('Naya tab khol raha hun', 'assistant', 'info');
-      speak('Naya tab khol raha hun');
-      window.open('', '_blank');
-      return;
-    }
-    
-    // Refresh Commands
-    if (lowerCommand.includes('refresh') || lowerCommand.includes('reload') || lowerCommand.includes('page refresh')) {
-      addMessage('Page refresh kar raha hun', 'assistant', 'info');
-      speak('Page refresh kar raha hun');
-      setTimeout(() => window.location.reload(), 1000);
-      return;
-    }
-    
-    // Screen Control Commands
-    if (lowerCommand.includes('fullscreen') || lowerCommand.includes('full screen') || lowerCommand.includes('poora screen')) {
-      addMessage('Fullscreen mode activate kar raha hun', 'assistant', 'info');
-      speak('Fullscreen mode on kar raha hun');
-      document.documentElement.requestFullscreen();
-      return;
-    }
-    
-    if (lowerCommand.includes('exit fullscreen') || lowerCommand.includes('fullscreen band')) {
-      addMessage('Fullscreen mode band kar raha hun', 'assistant', 'info');
-      speak('Fullscreen mode off kar raha hun');
-      document.exitFullscreen();
-      return;
-    }
-    
-    // Theme Control Commands
-    if (lowerCommand.includes('dark mode') || lowerCommand.includes('dark theme') || lowerCommand.includes('andhera kar do')) {
-      setTheme('dark');
-      addMessage('Dark mode activate kar diya', 'assistant', 'info');
-      speak('Dark mode on kar diya');
-      return;
-    }
-    
-    if (lowerCommand.includes('light mode') || lowerCommand.includes('light theme') || lowerCommand.includes('ujala kar do')) {
-      setTheme('light');
-      addMessage('Light mode activate kar diya', 'assistant', 'info');
-      speak('Light mode on kar diya');
-      return;
-    }
-    
-    // Fun Commands
-    if (lowerCommand.includes('joke sunao') || lowerCommand.includes('mazak sunao') || lowerCommand.includes('tell me a joke')) {
-      const jokes = [
-        'Programmer ki wife: Tum hamesha computer ke saath kyun rehte ho? Programmer: Kyunki computer kabhi galat nahi bolti!',
-        'Teacher: Beta, Internet ka full form kya hai? Student: Interesting Network of Talented Educated Rats Not Eating Tacos!',
-        'Why do programmers prefer dark mode? Because light attracts bugs!'
-      ];
-      const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
-      addMessage(randomJoke, 'assistant', 'info');
-      speak(randomJoke);
-      return;
-    }
-    
-    // Time & Date Commands
-    if (lowerCommand.includes('time kya hai') || lowerCommand.includes('waqt batao') || lowerCommand.includes('what time is it')) {
-      const time = new Date().toLocaleTimeString('en-US', { hour12: true });
-      addMessage(`Current time: ${time}`, 'assistant', 'info');
-      speak(`Abhi time hai ${time}`);
-      return;
-    }
-    
-    if (lowerCommand.includes('date kya hai') || lowerCommand.includes('tarikh batao') || lowerCommand.includes('what date is it')) {
-      const date = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      addMessage(`Today's date: ${date}`, 'assistant', 'info');
-      speak(`Aaj ki date hai ${date}`);
-      return;
-    }
-    
-    // Calculator Commands
-    const mathMatch = lowerCommand.match(/(?:calculate|compute|solve|hisab karo|calculate karo)\s+(.+)/i) ||
-                     lowerCommand.match(/(.+?)\s+(?:ka jawab|ka hisab|calculate|solve)/i);
-    
-    if (mathMatch) {
+    // Math calculations
+    if (/\b(calculate|compute|solve|hisab|plus|minus|jama|kam|\d)\b/i.test(cmd)) {
       try {
-        const expression = mathMatch[1].replace(/[^0-9+\-*/.() ]/g, '');
-        const result = eval(expression);
-        addMessage(`${mathMatch[1]} = ${result}`, 'assistant', 'info');
-        speak(`Jawab hai ${result}`);
-        return;
-      } catch {
-        addMessage('Sorry, calculation nahi kar saka', 'assistant', 'info');
-        speak('Calculation mein problem hai');
-        return;
+        let expression = cmd
+          .replace(/plus|jama/gi, '+')
+          .replace(/minus|kam/gi, '-')
+          .replace(/multiply|guna/gi, '*')
+          .replace(/divide|bhag/gi, '/')
+          .replace(/[^0-9+\-*/.() ]/g, '')
+          .replace(/\s+/g, '');
+          
+        if (expression && /[0-9]/.test(expression)) {
+          const result = eval(expression);
+          addMessage(`Jawab: ${result}`, 'assistant', 'info');
+          speak(`Jawab hai ${result}`);
+          return true;
+        }
+      } catch (error) {
+        addMessage('Calculation samjh nahi aaya', 'assistant', 'info');
+        speak('Calculation samjh nahi aaya');
+        return true;
       }
     }
     
-    // Voice Speed Control
-    if (lowerCommand.includes('voice slow karo') || lowerCommand.includes('awaz slow karo')) {
-      setVoiceSettings(prev => ({ ...prev, rate: Math.max(0.5, prev.rate - 0.2) }));
-      addMessage('Voice speed slow kar diya', 'assistant', 'info');
-      speak('Voice speed slow kar diya');
-      return;
+    // Theme control
+    if (/\b(dark mode|light mode|theme|andhera|ujala)\b/i.test(cmd)) {
+      if (/\b(dark|andhera)\b/i.test(cmd)) {
+        setTheme('dark');
+        addMessage('Dark mode on kar diya', 'assistant', 'info');
+        speak('Dark mode on kar diya');
+        return true;
+      }
+      if (/\b(light|ujala)\b/i.test(cmd)) {
+        setTheme('light');
+        addMessage('Light mode on kar diya', 'assistant', 'info');
+        speak('Light mode on kar diya');
+        return true;
+      }
     }
     
-    if (lowerCommand.includes('voice fast karo') || lowerCommand.includes('awaz fast karo')) {
-      setVoiceSettings(prev => ({ ...prev, rate: Math.min(2, prev.rate + 0.2) }));
-      addMessage('Voice speed fast kar diya', 'assistant', 'info');
-      speak('Voice speed fast kar diya');
-      return;
+    // General conversation
+    if (/\b(thanks|thank you|shukriya|dhanyawad)\b/i.test(cmd)) {
+      addMessage('Welcome! Koi aur madad chahiye?', 'assistant', 'info');
+      speak('Welcome! Koi aur madad chahiye?');
+      return true;
     }
     
-    // Random Color Theme
-    if (lowerCommand.includes('random color') || lowerCommand.includes('rang badlo') || lowerCommand.includes('color change karo')) {
-      const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe'];
-      const randomColor = colors[Math.floor(Math.random() * colors.length)];
-      document.documentElement.style.setProperty('--primary-gradient', `linear-gradient(135deg, ${randomColor} 0%, #764ba2 100%)`);
-      addMessage('Random color theme apply kar diya!', 'assistant', 'info');
-      speak('Naya color theme laga diya');
-      return;
-    }
-    
-    // Window Control Commands
-    if (lowerCommand.includes('window minimize') || lowerCommand.includes('window chota karo') || lowerCommand.includes('minimize karo')) {
-      addMessage('Window minimize kar raha hun', 'assistant', 'info');
-      speak('Window minimize kar raha hun');
-      // Browser limitation: Cannot minimize programmatically
-      return;
-    }
-    
-    if (lowerCommand.includes('window maximize') || lowerCommand.includes('window bara karo') || lowerCommand.includes('maximize karo')) {
-      addMessage('Window maximize kar raha hun', 'assistant', 'info');
-      speak('Window maximize kar raha hun');
-      // Try to maximize by going fullscreen
-      document.documentElement.requestFullscreen();
-      return;
-    }
-    
-    // Window Size Control
-    if (lowerCommand.includes('window resize') || lowerCommand.includes('window size change') || lowerCommand.includes('window ka size badlo')) {
-      addMessage('Window resize kar raha hun', 'assistant', 'info');
-      speak('Window resize kar raha hun');
-      window.resizeTo(1200, 800);
-      return;
-    }
-    
-    if (lowerCommand.includes('window center') || lowerCommand.includes('window beech mein') || lowerCommand.includes('center karo')) {
-      addMessage('Window center kar raha hun', 'assistant', 'info');
-      speak('Window center kar raha hun');
-      const screenWidth = window.screen.width;
-      const screenHeight = window.screen.height;
-      const windowWidth = 1200;
-      const windowHeight = 800;
-      window.moveTo((screenWidth - windowWidth) / 2, (screenHeight - windowHeight) / 2);
-      return;
-    }
-    
-    // Window Position Control
-    if (lowerCommand.includes('window left') || lowerCommand.includes('window baayen') || lowerCommand.includes('left side karo')) {
-      addMessage('Window left side move kar raha hun', 'assistant', 'info');
-      speak('Window left side kar raha hun');
-      window.moveTo(0, 0);
-      return;
-    }
-    
-    if (lowerCommand.includes('window right') || lowerCommand.includes('window daayen') || lowerCommand.includes('right side karo')) {
-      addMessage('Window right side move kar raha hun', 'assistant', 'info');
-      speak('Window right side kar raha hun');
-      window.moveTo(window.screen.width - window.outerWidth, 0);
-      return;
-    }
-    
-    // Window Focus Control
-    if (lowerCommand.includes('window focus') || lowerCommand.includes('window front') || lowerCommand.includes('saamne lao')) {
-      addMessage('Window focus kar raha hun', 'assistant', 'info');
-      speak('Window focus kar raha hun');
-      window.focus();
-      return;
-    }
-    
-    // Window Scroll Control
-    if (lowerCommand.includes('scroll up') || lowerCommand.includes('upar scroll') || lowerCommand.includes('page upar karo')) {
-      addMessage('Page upar scroll kar raha hun', 'assistant', 'info');
-      speak('Page upar scroll kar raha hun');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-    
-    if (lowerCommand.includes('scroll down') || lowerCommand.includes('neeche scroll') || lowerCommand.includes('page neeche karo')) {
-      addMessage('Page neeche scroll kar raha hun', 'assistant', 'info');
-      speak('Page neeche scroll kar raha hun');
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-      return;
-    }
-    
-    // Background Mode Commands
-    if (lowerCommand.includes('background mode on') || lowerCommand.includes('hamesha sun te raho')) {
-      setIsBackgroundListening(true);
-      setShowFloatingWidget(true);
-      addMessage('Floating widget activated!', 'assistant', 'info');
-      speak('Floating widget on kar diya');
-      return;
-    }
-    
-    if (lowerCommand.includes('background mode off') || lowerCommand.includes('background band karo')) {
-      setIsBackgroundListening(false);
-      setShowFloatingWidget(false);
-      addMessage('Floating widget deactivated', 'assistant', 'info');
-      speak('Floating widget off kar diya');
-      return;
+    if (/\b(bye|goodbye|alvida|khuda hafiz)\b/i.test(cmd)) {
+      addMessage('Goodbye! Phir milenge!', 'assistant', 'info');
+      speak('Goodbye! Phir milenge!');
+      return true;
     }
     
     // Default smart response
-    const smartResponse = () => {
-      // Try to understand intent
-      if (/\b(thanks|thank you|shukriya|dhanyawad)\b/i.test(lowerCommand)) {
-        addMessage('Welcome! Koi aur madad chahiye?', 'assistant', 'info');
-        speak('Welcome! Koi aur madad chahiye?');
-        return;
-      }
-      
-      if (/\b(bye|goodbye|alvida|khuda hafiz)\b/i.test(lowerCommand)) {
-        addMessage('Goodbye! Phir milenge!', 'assistant', 'info');
-        speak('Goodbye! Phir milenge!');
-        return;
-      }
-      
-      // Generic helpful response
-      const helpfulResponses = [
-        `"${command}" - Ye command samjh nahi aaya. Try: "open youtube", "search cats", "task banao", "time kya hai"`,
-        `Main "${command}" samjh nahi payi. Koi website kholna hai? Ya koi task banana hai?`,
-        `"${command}" - Kya karna chahte hain? Website open karna, search karna, ya task banana?`
-      ];
-      const response = helpfulResponses[Math.floor(Math.random() * helpfulResponses.length)];
-      addMessage(response, 'assistant', 'info');
-      speak('Samjh nahi aaya, koi aur tarike se bolo');
-    };
+    addMessage(`Main "${command}" samjh gaya. Kya aap chahte hain ke main Google pe search karun?`, 'assistant', 'info');
+    speak('Samjh gaya, Google pe search karta hun');
+    setTimeout(() => {
+      window.open(`https://google.com/search?q=${encodeURIComponent(command)}`, '_blank');
+    }, 1000);
+    return true;
+  };
+
+  const handleVoiceCommand = async (command: string, isVoice: boolean = true) => {
+    addMessage(command, 'user', 'command');
+    addActivity(`${isVoice ? 'Voice' : 'Text'} command: "${command}"`, 'command');
     
-    smartResponse();
+    await processSmartCommand(command);
   };
 
   const handleTextSubmit = (e: React.FormEvent) => {
@@ -661,8 +307,6 @@ const App: React.FC = () => {
         setIsListening(false);
         addMessage('Voice recognition not available. Please use text input.', 'assistant', 'info');
       }
-    } else if (!recognitionRef.current) {
-      addMessage('Voice recognition not supported in this browser. Please use text input.', 'assistant', 'info');
     }
   };
 
@@ -681,18 +325,44 @@ const App: React.FC = () => {
         utterance.pitch = voiceSettings.pitch;
         utterance.volume = voiceSettings.volume;
         
-        // Smart language detection for better pronunciation
-        if (/[a-zA-Z]/.test(text) && !/[\u0600-\u06FF]/.test(text)) {
-          // Contains English characters, use English voice
+        // Smart language detection and pronunciation fixes
+        let processedText = text;
+        
+        // Replace Roman Urdu with phonetic English for better pronunciation
+        const romanUrduMap: {[key: string]: string} = {
+          'kaise ho': 'kaay-say ho',
+          'theek hun': 'theek hun',
+          'samjh gaya': 'samaj gaya',
+          'kar raha hun': 'kar raha hun',
+          'khol raha hun': 'khol raha hun',
+          'search kar raha hun': 'search kar raha hun',
+          'ban gaya': 'ban gaya',
+          'jawab hai': 'jawab hai',
+          'abhi time hai': 'abhi time hai',
+          'aaj ki date hai': 'aaj ki date hai',
+          'madad chahiye': 'madad chahiye',
+          'phir milenge': 'phir milenge',
+          'dark mode on kar diya': 'dark mode on kar diya',
+          'light mode on kar diya': 'light mode on kar diya'
+        };
+        
+        // Replace Roman Urdu phrases with phonetic versions
+        Object.keys(romanUrduMap).forEach(urdu => {
+          const phonetic = romanUrduMap[urdu];
+          processedText = processedText.replace(new RegExp(urdu, 'gi'), phonetic);
+        });
+        
+        // Set language based on content
+        if (/[a-zA-Z]/.test(processedText) && processedText.includes(' ')) {
+          // Mixed or English content
           utterance.lang = 'en-US';
         } else {
-          // Use Hindi voice for Roman Urdu/Hindi words
+          // Pure Roman Urdu - use Hindi voice
           utterance.lang = 'hi-IN';
         }
         
+        utterance.text = processedText;
         speechSynthesis.speak(utterance);
-      } else {
-        console.log('Speech synthesis not supported');
       }
     } catch (error) {
       console.log('Speech synthesis error:', error);
@@ -714,19 +384,11 @@ const App: React.FC = () => {
   const handleTasksView = () => {
     setShowTasksPanel(true);
     setShowUserDropdown(false);
-    // Add sample tasks
-    setTasks([
-      { id: 1, title: 'Check weather updates', completed: false, priority: 'medium' },
-      { id: 2, title: 'Review calendar events', completed: true, priority: 'high' },
-      { id: 3, title: 'Send follow-up emails', completed: false, priority: 'low' }
-    ]);
   };
 
   const handleChatHistory = () => {
-    // Show chat history in messages
     const historyMessages: Message[] = [
-      { id: 'hist1', text: 'Previous conversation loaded', sender: 'assistant', timestamp: new Date(), type: 'info' },
-      { id: 'hist2', text: 'What can I help you with today?', sender: 'assistant', timestamp: new Date(), type: 'greeting' }
+      { id: 'hist1', text: 'Previous conversation loaded', sender: 'assistant', timestamp: new Date(), type: 'info' }
     ];
     setMessages(prev => [...historyMessages, ...prev]);
     setShowUserDropdown(false);
@@ -747,11 +409,7 @@ const App: React.FC = () => {
         completed: false,
         priority: newTaskPriority
       };
-      setTasks(prev => {
-        const updated = [...prev, newTask];
-        localStorage.setItem(`shifra_tasks_${getUserId()}`, JSON.stringify(updated));
-        return updated;
-      });
+      setTasks(prev => [...prev, newTask]);
       setNewTaskTitle('');
       setNewTaskPriority('medium');
       addMessage(`Task created: ${newTask.title}`, 'assistant', 'info');
@@ -799,12 +457,10 @@ const App: React.FC = () => {
             </div>
             
             <div className="header-controls">
-              {/* Theme Toggle */}
               <button onClick={toggleTheme} className="control-btn" title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}>
                 {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
               </button>
 
-              {/* Settings Dropdown */}
               <div className="dropdown-container">
                 <button 
                   onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} 
@@ -832,7 +488,6 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              {/* User Dropdown */}
               <div className="dropdown-container">
                 <button 
                   onClick={() => setShowUserDropdown(!showUserDropdown)} 
@@ -1094,7 +749,6 @@ const App: React.FC = () => {
               >
                 <h3>My Tasks</h3>
                 
-                {/* Add New Task Form */}
                 <form onSubmit={addNewTask} className="add-task-form">
                   <input
                     type="text"
@@ -1165,32 +819,6 @@ const App: React.FC = () => {
               >
                 <Auth onLogin={handleLogin} />
               </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Floating Voice Widget */}
-        <AnimatePresence>
-          {showFloatingWidget && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              className="floating-widget"
-              drag
-            >
-              <motion.button
-                onClick={isListening ? stopListening : startListening}
-                className={`widget-btn ${isListening ? 'listening' : ''}`}
-              >
-                {isListening ? <MicOff size={16} /> : <Mic size={16} />}
-              </motion.button>
-              <button 
-                className="widget-close"
-                onClick={() => setShowFloatingWidget(false)}
-              >
-                ×
-              </button>
             </motion.div>
           )}
         </AnimatePresence>
