@@ -99,10 +99,16 @@ const App: React.FC = () => {
     
     // Simulate connection
     addActivity('Connected to local assistant', 'connection');
+    
+    // Add welcome message
+    setTimeout(() => {
+      addMessage('Hello! I am Shifra, your AI assistant. Try saying "time kya hai" or "dark mode karo".', 'assistant', 'greeting');
+    }, 1000);
 
     // Initialize Speech Recognition with multi-language support
-    if ('webkitSpeechRecognition' in window) {
-      recognitionRef.current = new (window as any).webkitSpeechRecognition();
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = false;
       recognitionRef.current.lang = 'en-US';
@@ -115,15 +121,25 @@ const App: React.FC = () => {
         if (isBackgroundListening) {
           setTimeout(() => {
             if (recognitionRef.current && !isListening) {
-              recognitionRef.current.start();
-              setIsListening(true);
+              try {
+                recognitionRef.current.start();
+                setIsListening(true);
+              } catch (error) {
+                console.log('Voice recognition restart failed:', error);
+                setIsListening(false);
+              }
             }
           }, 1000);
         }
       };
 
-      recognitionRef.current.onerror = () => setIsListening(false);
+      recognitionRef.current.onerror = (event: any) => {
+        console.log('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
       recognitionRef.current.onend = () => setIsListening(false);
+    } else {
+      console.log('Speech recognition not supported in this browser');
     }
 
     return () => {
@@ -176,11 +192,119 @@ const App: React.FC = () => {
     setMessages(prev => [...prev, newMessage]);
   };
 
-  const handleVoiceCommand = (command: string) => {
+  const handleVoiceCommand = (command: string, isVoice: boolean = true) => {
     addMessage(command, 'user', 'command');
-    addActivity(`Voice command: "${command}"`, 'command');
+    addActivity(`${isVoice ? 'Voice' : 'Text'} command: "${command}"`, 'command');
     
     const lowerCommand = command.toLowerCase();
+    
+    // Smart AI Response System
+    const processSmartCommand = (cmd: string) => {
+      // Greeting detection
+      if (/\b(hi|hello|hey|namaste|salam|assalam)\b/i.test(cmd)) {
+        const responses = [
+          'Hello! Main Shifra hun, aapka AI assistant. Kya madad kar sakti hun?',
+          'Hi! Kaise hain aap? Koi command dena chahte hain?',
+          'Namaste! Main yahan hun aapki help ke liye.'
+        ];
+        const response = responses[Math.floor(Math.random() * responses.length)];
+        addMessage(response, 'assistant', 'greeting');
+        speak(response);
+        return true;
+      }
+      
+      // Website opening - Smart detection
+      const websiteMatch = cmd.match(/(?:open|kholo|visit|go to)\s+([a-zA-Z0-9]+)/i);
+      if (websiteMatch) {
+        const site = websiteMatch[1].toLowerCase();
+        let url = '';
+        let siteName = '';
+        
+        // Smart URL mapping
+        const siteMap: {[key: string]: {url: string, name: string}} = {
+          'youtube': {url: 'https://youtube.com', name: 'YouTube'},
+          'google': {url: 'https://google.com', name: 'Google'},
+          'facebook': {url: 'https://facebook.com', name: 'Facebook'},
+          'instagram': {url: 'https://instagram.com', name: 'Instagram'},
+          'insta': {url: 'https://instagram.com', name: 'Instagram'},
+          'twitter': {url: 'https://twitter.com', name: 'Twitter'},
+          'github': {url: 'https://github.com', name: 'GitHub'},
+          'linkedin': {url: 'https://linkedin.com', name: 'LinkedIn'},
+          'whatsapp': {url: 'https://web.whatsapp.com', name: 'WhatsApp Web'},
+          'gmail': {url: 'https://gmail.com', name: 'Gmail'},
+          'amazon': {url: 'https://amazon.com', name: 'Amazon'},
+          'netflix': {url: 'https://netflix.com', name: 'Netflix'}
+        };
+        
+        if (siteMap[site]) {
+          url = siteMap[site].url;
+          siteName = siteMap[site].name;
+        } else {
+          // Smart fallback - try common patterns
+          url = `https://${site}.com`;
+          siteName = site.charAt(0).toUpperCase() + site.slice(1);
+        }
+        
+        addMessage(`${siteName} khol raha hun`, 'assistant', 'info');
+        speak(`${siteName} khol raha hun`);
+        window.open(url, '_blank');
+        return true;
+      }
+      
+      // Search queries
+      const searchMatch = cmd.match(/(?:search|find|look for|dhundo)\s+(.+)/i);
+      if (searchMatch) {
+        const query = searchMatch[1];
+        const searchUrl = `https://google.com/search?q=${encodeURIComponent(query)}`;
+        addMessage(`"${query}" search kar raha hun`, 'assistant', 'info');
+        speak(`${query} search kar raha hun`);
+        window.open(searchUrl, '_blank');
+        return true;
+      }
+      
+      // Smart task creation - any format
+      if (/(?:task|kaam|todo|reminder|yaad|remember)/i.test(cmd)) {
+        const taskText = cmd.replace(/(?:create|add|make|banao|karo|task|kaam|todo|reminder|yaad|remember|me|mujhe|hai|karna|krna)/gi, '').trim();
+        if (taskText) {
+          const newTask = {
+            id: Date.now(),
+            title: taskText,
+            completed: false,
+            priority: 'medium' as 'low' | 'medium' | 'high'
+          };
+          setTasks(prev => [...prev, newTask]);
+          addMessage(`Task created: "${taskText}"`, 'assistant', 'info');
+          speak(`Task ban gaya: ${taskText}`);
+          return true;
+        }
+      }
+      
+      // Smart calculation
+      const mathMatch = cmd.match(/(?:calculate|compute|solve|hisab|plus|minus|multiply|divide|\+|\-|\*|\/|\d)/i);
+      if (mathMatch) {
+        try {
+          // Extract numbers and operators
+          const expression = cmd.replace(/[^0-9+\-*/.() ]/g, ' ').replace(/\s+/g, '').replace(/plus/gi, '+').replace(/minus/gi, '-').replace(/multiply/gi, '*').replace(/divide/gi, '/');
+          if (expression && /[0-9]/.test(expression)) {
+            const result = eval(expression);
+            addMessage(`${cmd} = ${result}`, 'assistant', 'info');
+            speak(`Jawab hai ${result}`);
+            return true;
+          }
+        } catch (error) {
+          addMessage('Calculation samjh nahi aaya', 'assistant', 'info');
+          speak('Calculation samjh nahi aaya');
+          return true;
+        }
+      }
+      
+      return false;
+    };
+    
+    // Try smart processing first
+    if (processSmartCommand(lowerCommand)) {
+      return;
+    }
     
     // Urdu Task Creation Commands
     const urduTaskMatch = lowerCommand.match(/(?:task banao|kaam banao|task add karo|kaam add karo|ek task create karo|task create karo)\s+(.+?)(?:\s+(?:high|medium|low|zaroori|aam|kam)\s+priority)?$/i) ||
@@ -475,23 +599,55 @@ const App: React.FC = () => {
       return;
     }
     
-    // Default response for unhandled commands
-    addMessage('Command received. This is a demo version.', 'assistant', 'info');
-    speak('Command samjh gaya, demo version hai');
+    // Default smart response
+    const smartResponse = () => {
+      // Try to understand intent
+      if (/\b(thanks|thank you|shukriya|dhanyawad)\b/i.test(lowerCommand)) {
+        addMessage('Welcome! Koi aur madad chahiye?', 'assistant', 'info');
+        speak('Welcome! Koi aur madad chahiye?');
+        return;
+      }
+      
+      if (/\b(bye|goodbye|alvida|khuda hafiz)\b/i.test(lowerCommand)) {
+        addMessage('Goodbye! Phir milenge!', 'assistant', 'info');
+        speak('Goodbye! Phir milenge!');
+        return;
+      }
+      
+      // Generic helpful response
+      const helpfulResponses = [
+        `"${command}" - Ye command samjh nahi aaya. Try: "open youtube", "search cats", "task banao", "time kya hai"`,
+        `Main "${command}" samjh nahi payi. Koi website kholna hai? Ya koi task banana hai?`,
+        `"${command}" - Kya karna chahte hain? Website open karna, search karna, ya task banana?`
+      ];
+      const response = helpfulResponses[Math.floor(Math.random() * helpfulResponses.length)];
+      addMessage(response, 'assistant', 'info');
+      speak('Samjh nahi aaya, koi aur tarike se bolo');
+    };
+    
+    smartResponse();
   };
 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputText.trim()) {
-      handleVoiceCommand(inputText);
+      handleVoiceCommand(inputText, false);
       setInputText('');
     }
   };
 
   const startListening = () => {
     if (recognitionRef.current && !isListening) {
-      setIsListening(true);
-      recognitionRef.current.start();
+      try {
+        setIsListening(true);
+        recognitionRef.current.start();
+      } catch (error) {
+        console.log('Failed to start voice recognition:', error);
+        setIsListening(false);
+        addMessage('Voice recognition not available. Please use text input.', 'assistant', 'info');
+      }
+    } else if (!recognitionRef.current) {
+      addMessage('Voice recognition not supported in this browser. Please use text input.', 'assistant', 'info');
     }
   };
 
@@ -503,12 +659,20 @@ const App: React.FC = () => {
   };
 
   const speak = (text: string) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = voiceSettings.rate;
-    utterance.pitch = voiceSettings.pitch;
-    utterance.volume = voiceSettings.volume;
-    utterance.lang = 'en-US';
-    speechSynthesis.speak(utterance);
+    try {
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = voiceSettings.rate;
+        utterance.pitch = voiceSettings.pitch;
+        utterance.volume = voiceSettings.volume;
+        utterance.lang = 'en-US';
+        speechSynthesis.speak(utterance);
+      } else {
+        console.log('Speech synthesis not supported');
+      }
+    } catch (error) {
+      console.log('Speech synthesis error:', error);
+    }
   };
 
   const handleVoiceSettings = () => {
