@@ -174,6 +174,32 @@ const App: React.FC = () => {
   const processSmartCommand = async (command: string) => {
     const cmd = command.toLowerCase();
     
+    // Handle search confirmation
+    if (/\b(yes|haan|ha|search karo|karo|sure)\b/i.test(cmd) && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.text.includes('Google pe search karun')) {
+        // Get the previous user command
+        const userMessages = messages.filter(m => m.sender === 'user');
+        if (userMessages.length >= 2) {
+          const searchQuery = userMessages[userMessages.length - 2].text;
+          addMessage(`"${searchQuery}" search kar raha hun`, 'assistant', 'info');
+          speak(`Searching for ${searchQuery}`);
+          window.open(`https://google.com/search?q=${encodeURIComponent(searchQuery)}`, '_blank');
+          return true;
+        }
+      }
+    }
+    
+    // Handle search rejection
+    if (/\b(no|nahi|nai|skip|cancel|mat karo)\b/i.test(cmd) && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.text.includes('Google pe search karun') || lastMessage.text.includes('yes" to search')) {
+        addMessage('Theek hai, koi aur madad chahiye?', 'assistant', 'info');
+        speak('Okay, anything else I can help with?');
+        return true;
+      }
+    }
+    
     // Greetings
     if (/\b(hi|hello|hey|namaste|salam|kaise ho|kaisa hai|kya haal)\b/i.test(cmd)) {
       const responses = [
@@ -311,11 +337,34 @@ const App: React.FC = () => {
       return true;
     }
     
-    // Default smart response
-    addMessage(`Main "${command}" samjh gaya. Kya aap chahte hain ke main Google pe search karun?`, 'assistant', 'info');
-    speak('I understand. Let me search that on Google for you');
+    // Default smart response with options
+    const responses = [
+      `Main "${command}" samjh gaya. Thank you for the feedback!`,
+      `"${command}" - Acha laga sunke! Koi aur madad chahiye?`,
+      `Main "${command}" samjh gaya. Kya aap chahte hain ke main Google pe search karun?`
+    ];
+    
+    // Check if it's a compliment/feedback
+    if (/\b(good|great|nice|awesome|excellent|perfect|amazing|wonderful|fantastic|brilliant|outstanding|superb|working|work|fine|ok|okay)\b/i.test(command)) {
+      const complimentResponses = [
+        'Thank you! Main aur behtar karne ki koshish karta rahunga.',
+        'Khushi hui! Koi aur kaam hai?',
+        'Shukriya! Aur kya madad kar sakta hun?'
+      ];
+      const response = complimentResponses[Math.floor(Math.random() * complimentResponses.length)];
+      addMessage(response, 'assistant', 'info');
+      speak('Thank you for your feedback!');
+      return true;
+    }
+    
+    // For other commands, ask for search confirmation
+    const response = responses[2]; // Always ask for search
+    addMessage(response, 'assistant', 'info');
+    speak('Should I search that on Google for you?');
+    
+    // Add quick action buttons (simulate)
     setTimeout(() => {
-      window.open(`https://google.com/search?q=${encodeURIComponent(command)}`, '_blank');
+      addMessage('Type "yes" to search or "no" to skip.', 'assistant', 'info');
     }, 1000);
     return true;
   };
